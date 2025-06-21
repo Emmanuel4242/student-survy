@@ -1,29 +1,97 @@
 import streamlit as st
 import pandas as pd
-import joblib
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
 
-st.title("Student Survey KNN Classifier")
+st.title("🎓 Student Performance Predictor (KNN)")
 
-# Load model
-@st.cache_resource
-def load_model():
-    return joblib.load("knn_model.pkl")
+# Load and preprocess dataset
+@st.cache_data
+def load_data():
+    df = pd.read_csv("Stats survey.csv")
 
-model = load_model()
+    # Convert GPA to numeric
+    df["GPA_2023"] = pd.to_numeric(
+        df["Your 2023 academic year average/GPA in % (Ignore if you are 2024 1st year student)"], 
+        errors="coerce"
+    )
 
-# Sidebar input
-st.sidebar.header("Input Features")
-age = st.sidebar.slider("Age", 15, 25)
-gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
-study_time = st.sidebar.slider("Study Time (hours/week)", 1, 20)
+    # Create performance level
+    def classify_performance(score):
+        if score < 60:
+            return "low"
+        elif score < 75:
+            return "medium"
+        else:
+            return "high"
 
-# Convert gender to number (you can adjust this based on your training data)
-gender_num = 0 if gender == "Male" else 1
+    df["performance level"] = df["GPA_2023"].apply(classify_performance)
+
+    # Encode categorical variables
+    le = LabelEncoder()
+    categorical_cols = [
+        "Your Sex?",
+        "What faculty does your degree fall under?",
+        "Were you on scholarship/bursary in 2023?",
+        "How often do you go out partying/socialising during the week? ",
+        "On a night out, how many alcoholic drinks do you consume?",
+    ]
+
+    for col in categorical_cols:
+        df[col] = le.fit_transform(df[col].astype(str))
+
+    return df
+
+df = load_data()
+
+# Features and label
+X = df[[
+    "Your Sex?",
+    "What faculty does your degree fall under?",
+    "Were you on scholarship/bursary in 2023?",
+    "How often do you go out partying/socialising during the week? ",
+    "On a night out, how many alcoholic drinks do you consume?"
+]]
+y = df["performance level"]
+
+# Scale features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train model
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_scaled, y)
+
+# Sidebar inputs
+st.sidebar.header("Input Student Features")
+sex = st.sidebar.selectbox("Sex", ["Male", "Female"])
+faculty = st.sidebar.selectbox("Faculty", sorted(df["What faculty does your degree fall under?"].unique()))
+scholarship = st.sidebar.selectbox("Scholarship in 2023?", ["Yes", "No"])
+partying = st.sidebar.slider("Party Frequency (times/week)", 0, 7, 1)
+drinks = st.sidebar.slider("Drinks per Night Out", 0, 20, 1)
+
+# Encode input
+le = LabelEncoder()
+sex_encoded = le.fit(df["Your Sex?"]).transform([sex])[0]
+faculty_encoded = le.fit(df["What faculty does your degree fall under?"]).transform([faculty])[0]
+scholarship_encoded = le.fit(df["Were you on scholarship/bursary in 2023?"]).transform([scholarship])[0]
 
 # Format input
-input_data = pd.DataFrame([[age, gender_num, study_time]], columns=["age", "gender", "study_time"])
+input_data = pd.DataFrame([[
+    sex_encoded,
+    faculty_encoded,
+    scholarship_encoded,
+    partying,
+    drinks
+]], columns=X.columns)
 
-# Predict button
-if st.button("Predict"):
-    prediction = model.predict(input_data)
-    st.success(f"Prediction: {prediction[0]}")
+input_scaled = scaler.transform(input_data)
+
+# Predict
+if st.button("Predict Performance Level"):
+    prediction = knn.predict(input_scaled)[0]
+    st.success(f"📊 Predicted Performance Level: **{prediction.upper()}**")
+else:
+    st.info("⬅️ Enter student details and click Predict")
+
