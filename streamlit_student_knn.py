@@ -92,8 +92,20 @@ input_data = pd.DataFrame([[
 input_scaled = scaler.transform(input_data)
 
 # Predict
+# Replace the current predict section with this:
 if st.button("Predict Performance Level"):
-    prediction = knn.predict(input_scaled)[0]
-    st.success(f"📊 Predicted Performance Level: **{prediction.upper()}**")
+    try:
+        # Verify all inputs are filled
+        if not all([sex, faculty, scholarship, partying is not None, drinks is not None]):
+            st.warning("Please fill all student details in the sidebar")
+            st.stop()
+            
+        input_scaled = scaler.transform(input_data)
+        prediction = knn.predict(input_scaled)[0]
+        st.success(f"📊 Predicted Performance Level: **{prediction.upper()}**")
+    except Exception as e:
+        st.error(f"Prediction failed: {str(e)}")
+elif any([sex, faculty, scholarship, partying, drinks]):
+    st.info("✅ Details entered - Click 'Predict Performance Level'")
 else:
-    st.info("⬅️ Enter student details and click Predict")
+    st.info("⬅️ Enter student details in the sidebar and click Predict")
