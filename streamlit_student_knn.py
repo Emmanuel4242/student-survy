@@ -71,11 +71,14 @@ scholarship = st.sidebar.selectbox("Scholarship in 2023?", ["Yes", "No"])
 partying = st.sidebar.slider("Party Frequency (times/week)", 0, 7, 1)
 drinks = st.sidebar.slider("Drinks per Night Out", 0, 20, 1)
 
-# Encode input
-le = LabelEncoder()
-sex_encoded = le.fit(df["Your Sex?"]).transform([sex])[0]
-faculty_encoded = le.fit(df["What faculty does your degree fall under?"]).transform([faculty])[0]
-scholarship_encoded = le.fit(df["Were you on scholarship/bursary in 2023?"]).transform([scholarship])[0]
+# Manual mapping to match training encoding
+sex_map = {"Male": 0, "Female": 1}
+faculty_map = {name: idx for idx, name in enumerate(sorted(df["What faculty does your degree fall under?"].unique()))}
+scholarship_map = {"Yes": 1, "No": 0}
+
+sex_encoded = sex_map[sex]
+faculty_encoded = faculty_map[faculty]
+scholarship_encoded = scholarship_map[scholarship]
 
 # Format input
 input_data = pd.DataFrame([[
@@ -94,4 +97,3 @@ if st.button("Predict Performance Level"):
     st.success(f"📊 Predicted Performance Level: **{prediction.upper()}**")
 else:
     st.info("⬅️ Enter student details and click Predict")
-
